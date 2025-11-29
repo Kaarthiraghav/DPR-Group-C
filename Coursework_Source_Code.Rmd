@@ -1,0 +1,12 @@
+# Data programming in R CourseWork
+
+## Reading the dataset
+```{r}
+library(readr)
+dataset <- read.delim("clinical_dataset.tsv")
+```
+
+```{r}
+View(dataset)
+```
+
