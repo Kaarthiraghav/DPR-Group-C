@@ -1,12 +1,45 @@
 # Data programming in R CourseWork
 
-## Reading the dataset
+## Importing libraries
 ```{r}
 library(readr)
+library(dplyr)
+library(janitor)
+```
+
+## Reading the dataset
+```{r}
 dataset <- read.delim("clinical_dataset.tsv")
 ```
 
 ```{r}
 View(dataset)
+```
+
+## Exploring the dataset
+```{r}
+str(dataset)
+glimpse(dataset)
+summary(dataset)
+head(dataset)
+```
+
+## Make all column names consistent
+```{r}
+cleaned_dataset <- clean_names(dataset)
+```
+```{r}
+View(cleaned_dataset)
+```
+
+## Remove duplicate rows
+```{r}
+cleaned_dataset <- dataset |> distinct()
+str(dataset)
+```
+
+## Check missing values
+```{r}
+colSums(is.na(dataset))
 ```
 
