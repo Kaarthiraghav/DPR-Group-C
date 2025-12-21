@@ -1,45 +1,366 @@
-# Data programming in R CourseWork
+# DS202.3 – Data Programming with R
 
-## Importing libraries
+# Group C
+
+# Dataset: Clinical tumor sequencing data
+
+
+### Load required libraries
 ```{r}
 library(readr)
 library(dplyr)
 library(janitor)
+library(stringr)
+library(forcats)
+library(ggplot2)
+library(skimr)
 ```
 
-## Reading the dataset
+# Read the dataset (TSV file)
+
 ```{r}
-dataset <- read.delim("clinical_dataset.tsv")
+dataset <- read.delim("clinical_dataset.tsv", stringsAsFactors = FALSE)
 ```
 
-```{r}
-View(dataset)
-```
+# -----------------------------
 
-## Exploring the dataset
-```{r}
-str(dataset)
-glimpse(dataset)
-summary(dataset)
-head(dataset)
-```
+# Make column names consistent
 
-## Make all column names consistent
+# (snake_case, lowercase, no spaces)
+
+# -----------------------------
+
 ```{r}
 cleaned_dataset <- clean_names(dataset)
 ```
+
+# -----------------------------
+
+# Remove duplicate rows
+
+# -----------------------------
+
 ```{r}
+cleaned_dataset <- cleaned_dataset |> distinct()
+```
+
+# -----------------------------
+
+# Convert common placeholder values to NA
+
+# (real-world clinical data often uses these)
+
+# -----------------------------
+
+```{r}
+na_values <- c("", "NA", "N/A", "Unknown", "Not Reported",
+               "unknown", "not reported", "UNK", "missing")
+
+cleaned_dataset <- cleaned_dataset |> 
+  mutate(across(everything(), ~ ifelse(. %in% na_values, NA, .)))
+```
+
+# -----------------------------
+
+# Clean AGE column
+
+# - Remove non-numeric characters
+
+# - Convert to numeric
+
+# - Remove unrealistic ages
+
+# -----------------------------
+
+```{r}
+names(cleaned_dataset)
+```
+
+```{r}
+cleaned_dataset$current_age <- gsub("[^0-9.]", "", cleaned_dataset$current_age)
+cleaned_dataset$current_age <- as.numeric(cleaned_dataset$current_age)
+
+cleaned_dataset <- cleaned_dataset |> 
+  filter(current_age >= 0 & current_age <= 120)
+```
+
+# -----------------------------
+
+# Clean GENDER column
+
+# - Standardize values (male / female)
+
+# -----------------------------
+
+```{r}
+cleaned_dataset$sex <- tolower(cleaned_dataset$sex)
+
+cleaned_dataset$sex <- recode(cleaned_dataset$sex,
+                                 "m" = "male",
+                                 "male" = "male",
+                                 "man" = "male",
+                                 "f" = "female",
+                                 "female" = "female",
+                                 "woman" = "female")
+
+cleaned_dataset$sex <- as.factor(cleaned_dataset$sex)
+```
+
+# -----------------------------
+
+# Clean TUMOR STAGE column
+
+# - Normalize stage values (I, II, III, IV)
+
+# -----------------------------
+
+```{r}
+cleaned_dataset <- cleaned_dataset %>%
+  mutate(
+    # Convert to lowercase for consistency
+    stage_highest_recorded = tolower(stage_highest_recorded),
+
+    # Remove the word "stage" and spaces
+    stage_highest_recorded = str_replace_all(stage_highest_recorded,
+                                             c("stage" = "",
+                                               " " = "")),
+
+    # Replace Roman numerals with numbers
+    stage_highest_recorded = str_replace_all(stage_highest_recorded,
+                                             c("iv" = "4",
+                                               "iii" = "3",
+                                               "ii" = "2",
+                                               "i" = "1")),
+
+    # Extract the highest numeric stage (e.g., from "1-3" → 3)
+    stage_highest_recorded = str_extract(stage_highest_recorded, "[1-4](?!.*[1-4])"),
+
+    # Convert back to Roman numerals for presentation
+    stage_highest_recorded = recode(stage_highest_recorded,
+                                    "1" = "I",
+                                    "2" = "II",
+                                    "3" = "III",
+                                    "4" = "IV"),
+
+    stage_highest_recorded = as.factor(stage_highest_recorded)
+  )
+```
+
+# -----------------------------
+
+# Clean TUMOR TYPE column
+
+# - Lowercase
+
+# - Trim whitespace
+
+# - Group rare tumor types
+
+# -----------------------------
+
+```{r}
+cleaned_dataset <- cleaned_dataset %>%
+  mutate(cancer_type = tolower(cancer_type),
+         cancer_type = str_trim(cancer_type),
+         cancer_type = recode(cancer_type,
+                               "breast ca" = "breast cancer",
+                               "brca" = "breast cancer",
+                               "colon ca" = "colorectal cancer"),
+         cancer_type = fct_lump(as.factor(cancer_type), n = 15))
+```
+
+# Example corrections (can be expanded)
+
+```{r}
+cleaned_dataset$cancer_type <- recode(cleaned_dataset$cancer_type,
+                                     "breast ca" = "breast cancer",
+                                     "brca" = "breast cancer",
+                                     "colon ca" = "colorectal cancer")
+
+# Lump rare tumor types into "Other"
+cleaned_dataset$cancer_type <- fct_lump(as.factor(cleaned_dataset$cancer_type), n = 15)
+```
+
+# -----------------------------
+
+# Clean PRIMARY TREATMENT RESPONSE (Target Variable)
+
+# - Standardize outcome labels
+
+# -----------------------------
+
+```{r}
+cleaned_dataset <- cleaned_dataset %>%
+  mutate(sample_class = tolower(sample_class),
+         sample_class = recode(sample_class,
+                                "cr" = "complete response",
+                                "pr" = "partial response",
+                                "sd" = "stable disease",
+                                "pd" = "progressive disease"),
+         sample_class = as.factor(sample_class)) %>%
+  filter(!is.na(sample_class))
+```
+
+### Remove rows with missing target variable
+
+```{r}
+cleaned_dataset <- cleaned_dataset %>%
+  filter(!is.na(sample_class))
+```
+
+### Final structure and missing value check
+
+```{r}
+str(cleaned_dataset)
+summary(cleaned_dataset)
+colSums(is.na(cleaned_dataset))
+```
+
+### Save cleaned dataset for reproducibility
+
+```{r}
+write.csv(cleaned_dataset,
+          "cleaned_clinical_dataset.csv",
+          row.names = FALSE)
+```
+
+### View the datasets
+
+```{r}
+View(dataset)
 View(cleaned_dataset)
 ```
 
-## Remove duplicate rows
+### Basic dataset overview
+
 ```{r}
-cleaned_dataset <- dataset |> distinct()
-str(dataset)
+glimpse(cleaned_dataset)
+skim(cleaned_dataset)
+skim(dataset)
 ```
 
-## Check missing values
+### Univariate analysis
+
+#### Age distribution
+
 ```{r}
-colSums(is.na(dataset))
+ggplot(cleaned_dataset, aes(x = current_age)) +
+  geom_histogram(bins = 30) +
+  labs(
+    title = "Distribution of Patient Age",
+    x = "Age (Years)",
+    y = "Count"
+  )
+```
+#### Gender distributuion
+```{r}
+ggplot(cleaned_dataset, aes(x = sex)) +
+  geom_bar() +
+  labs(
+    title = "Gender Distribution",
+    x = "Gender",
+    y = "Count"
+  )
+```
+#### Cancer type distribution (top categories)
+```{r}
+ggplot(cleaned_dataset, aes(x = fct_infreq(cancer_type))) +
+  geom_bar() +
+  coord_flip() +
+  labs(
+    title = "Distribution of Cancer Types",
+    x = "Gender",
+    y = "Count"
+  )
+```
+#### Tumor stage distribution
+```{r}
+ggplot(cleaned_dataset, aes(x = stage_highest_recorded)) +
+  geom_bar() +
+  labs(
+    title = "Tumor Stage Distribution",
+    x = "Tumor Stage",
+    y = "Count"
+  )
+```
+#### Treatment Response distribution
+```{r}
+ggplot(cleaned_dataset, aes(x = sample_class)) +
+  geom_bar() +
+  labs(
+    title = "Primary Treatment Response Distribution",
+    x = "Treatment Outcome",
+    y = "Count"
+  )
+```
+
+### Bivariate Analysis
+#### Treatment response vs Gender
+```{r}
+ggplot(cleaned_dataset, aes(x = sex,
+                            fill = sample_class)) + 
+  geom_bar(position = "fill") +
+  labs(
+    title = "Treatment Response by Gender",
+    x = "Gender",
+    y = "Proportion"
+  )
+```
+#### Treatment response vs Tumor Stage
+```{r}
+ggplot(cleaned_dataset,
+       aes(x = stage_highest_recorded,
+           fill = sample_class)) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Treatment Response by Tumor Stage",
+    x = "Tumor Stage",
+    y = "Proportion"
+  )
+```
+#### Treatment response vs Cancer Type (Top types)
+```{r}
+ggplot(cleaned_dataset,
+       aes(x = fct_infreq(cancer_type),
+           fill = sample_class)) +
+  geom_bar(position = "fill") +
+  coord_flip() +
+  labs(
+    title = "Treatment Response by Cancer Type",
+    x = "Cancer Type",
+    y = "Proportion"
+  )
+```
+#### Treatment response vs Age (boxplot)
+```{r}
+ggplot(cleaned_dataset,
+       aes(x = sample_class,
+           y = current_age)) +
+  geom_boxplot() +
+  labs(
+    title = "Age Distribution by Treatment Response",
+    x = "Treatment Outcome",
+    y = "Age (Years)"
+  )
+```
+
+### Multivariate Analysis
+#### Age vs Tumor Stage coloured by response
+```{r}
+ggplot(cleaned_dataset,
+       aes(x = stage_highest_recorded,
+           y = current_age,
+           fill = sample_class)) +
+  geom_boxplot() +
+  labs(
+    title = "Age vs Tumor Stage by Treatment Response",
+    x = "Tumor Stage",
+    y = "Age (Years)"
+  )
+```
+
+### Class balance check (important for modeling)
+```{r}
+prop.table(table(cleaned_dataset$primary_treatment_outcome))
 ```
 
