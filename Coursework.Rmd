@@ -1,0 +1,92 @@
+# DS202.3 – Data Programming with R
+
+# Group C
+
+# Dataset: Clinical tumor sequencing data
+```{r}
+# install.packages("janitor")
+# install.packages("stringr")
+# install.packages("forcats")
+# install.packages("skimr")
+```
+
+
+### Load required libraries
+```{r}
+library(readr)
+library(dplyr)
+library(janitor)
+library(stringr)
+library(forcats)
+library(ggplot2)
+library(skimr)
+```
+
+### Load the dataset
+```{r}
+raw_data <- read_delim("clinical_dataset.tsv", 
+                       delim = "\t", 
+                       na = c("NA", "Unknown", "unknown", "NA ", ""),
+                       trim_ws = TRUE)
+```
+
+### Clean column names
+```{r}
+data_clean <- raw_data %>% clean_names()
+```
+
+
+### w
+```{r}
+# --- CHUNK 2: Cleaning Pipeline ---
+processed_data <- data_clean %>%
+  # 1. Demographics: Handle Age and Sex
+  mutate(
+    current_age = as.numeric(current_age),
+    sex = as.factor(sex)
+  ) %>%
+  
+  # 2. Target Variable: Predict primary response (Survival as proxy)
+  # We convert "0:LIVING" to a clean factor
+  mutate(
+    survival_status = case_when(
+      str_detect(overall_survival_status, "0:LIVING") ~ "Living",
+      str_detect(overall_survival_status, "1:DECEASED") ~ "Deceased",
+      TRUE ~ NA_character_ 
+    ),
+    survival_status = as.factor(survival_status)
+  ) %>%
+  
+  # 3. Clinical Features: Clean the Stage (NLP-derived)
+  # This fixes the quality issues where stages are inconsistently logged
+  mutate(
+    clean_stage = case_when(
+      str_detect(stage_highest_recorded, "Stage 1-3") ~ "Early/Intermediate",
+      str_detect(stage_highest_recorded, "Stage 4") ~ "Advanced/Metastatic",
+      TRUE ~ "Unknown/Other"
+    ),
+    clean_stage = as.factor(clean_stage)
+  ) %>%
+  
+  # 4. Handle NLP Binary Fields (Yes/No to 1/0)
+  # This cleans columns like tumor_site_bone_nlp
+  mutate(across(contains("_nlp"), ~case_when(
+    . == "Yes" ~ 1,
+    . == "No" ~ 0,
+    TRUE ~ 0 # Assuming No if not specified, or keep as NA depending on your logic
+  ))) %>%
+  
+  # 5. Final Row Filtering
+  # Remove rows where our primary predictors or target are still NA
+  filter(!is.na(survival_status), !is.na(current_age))
+
+# Check: How many NAs are left in our key columns?
+miss_scan <- processed_data %>% 
+  select(current_age, sex, survival_status, clean_stage) %>% 
+  summarise_all(~sum(is.na(.)))
+
+print(miss_scan)
+
+processed_data
+```
+
