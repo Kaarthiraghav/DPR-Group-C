@@ -43,14 +43,14 @@ cleaned_data <- cleaned_data %>%
 
 ### Identify and dropp columns with more than 50% missing data
 ```{r}
-#threshold <- 0.5
-# Calculate the proportion of NAs for each column
-#columns_to_keep <- colMeans(is.na(cleaned_data)) < threshold
+threshold <- 0.5
+ #Calculate the proportion of NAs for each column
+columns_to_keep <- colMeans(is.na(cleaned_data)) < threshold
 
 # Subset the dataframe to keep only valid columns
-#cleaned_data <- cleaned_data[, columns_to_keep]
+cleaned_data <- cleaned_data[, columns_to_keep]
 
-#print(paste("Columns remaining:", ncol(cleaned_data)))
+print(paste("Columns remaining:", ncol(cleaned_data)))
 ```
 
 ### Address NLP-Derived Fields
@@ -138,5 +138,122 @@ glimpse(final_analysis_df)
 
 ```{r}
 View(final_analysis_df)
+```
+
+
+#EDA 
+
+#Bivariate Analysis
+```{r}
+ggplot(final_analysis_df, aes(x = current_age)) +
+  geom_histogram(bins = 30) +
+  labs(
+    title = "Distribution of Patient Age",
+    x = "Age (Years)",
+    y = "Count"
+    )
+
+```
+
+```{r}
+ggplot(final_analysis_df, aes(x = sex,fill=sex)) +
+  geom_bar() +
+  labs(
+    title = "Gender Distribution",
+    x = "Gender",
+    y = "Count",
+    fill="sex"
+  )+
+  scale_fill_brewer(palette="Set2")+
+  theme_minimal()
+```
+
+```{r}
+ggplot(data=final_analysis_df,
+       aes(x=cancer_type,y=current_age,fill=cancer_type))+
+geom_boxplot()+
+  labs(title="cancertpe vs current age",x="Cancer_type",y="current_age")
+```
+
+```{r}
+ggplot(final_analysis_df, aes(x = fct_infreq(cancer_type),fill=sex)) +
+  geom_bar(position="fill") +
+  coord_flip() +
+  labs(
+    title = "Distribution of Cancer Types with gender",
+    x = "sex",
+    y = "Count",
+    fill="sex"
+  )+
+  scale_fill_brewer(palette = "Set2")+ #add some nice colors
+  theme_minimal()
+
+
+```
+
+```{r}
+ggplot(final_analysis_df, aes(x = response, fill=response)) +
+  geom_bar() +
+  labs(
+    title = "Responded count",
+    x = "Response",
+    y = "Count",
+    fill="response"
+  )+
+  scale_fill_brewer(palette="Set2")+
+  theme_minimal()
+```
+
+```{r}
+ggplot(final_analysis_df, aes(x =response, fill=stage_simplified)) +
+  geom_bar(position = "fill") +
+  labs(title = "Treatment Response by simplified_stage", y = "stage_simplified")
+```
+
+```{r}
+
+ggplot(final_analysis_df,
+       aes(x = msi_type,
+           fill = cancer_type)) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Treatment Response by Tumor Stage",
+    x = "msi_type",
+    y = "cancer_type"
+  )
+```
+
+#Univariate Analysis
+```{r}
+ggplot(final_analysis_df,
+       aes(x=response,
+           y = current_age)) +
+  geom_boxplot() +
+  labs(
+    title = "Age Distribution by Treatment Response",
+    x = "treatment_outcome",
+    y = "Age"
+  )
+```
+
+```{r}
+ggplot(final_analysis_df,
+       aes(x = stage_simplified ,
+           y = current_age,
+           fill = stage_simplified )) +
+  geom_boxplot() +
+  labs(
+    title = "Age vs Tumor Stage by Treatment Response",
+    x = "stage_simplified",
+    y = "Age (Years)"
+  )
+```
+
+#check missing values
+#class balance check(importent for modeling)
+```{r}
+colSums(is.na(final_analysis_df))
+prop.table(table(final_analysis_df$response))
+
 ```
 
