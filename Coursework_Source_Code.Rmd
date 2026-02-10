@@ -131,4 +131,12 @@ final_analysis_df <- cleaned_features %>%
 dim(final_analysis_df)
 summary(final_analysis_df)
 ```
+```{r}
+glimpse(final_analysis_df)
+```
+
+
+```{r}
+View(final_analysis_df)
+```
 
