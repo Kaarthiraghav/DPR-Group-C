@@ -1,0 +1,134 @@
+# DS202.3 – Data Programming with R
+# Group C
+# Dataset: Clinical tumor sequencing data
+
+### Load required libraries
+```{r}
+library(readr)
+library(dplyr)
+library(janitor)
+library(stringr)
+library(forcats)
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+```
+
+### Load the dataset
+```{r}
+raw_data <- read_tsv("clinical_dataset.tsv")
+# View(raw_data)
+```
+
+### Make column names consistent
+```{r}
+cleaned_data <- clean_names(raw_data)
+```
+
+### Inspect Structure
+```{r}
+glimpse(cleaned_data)
+# summary(cleaned_data)
+```
+
+### Standardize all missing values to true NAs
+```{r}
+# Standardize various "Unknown" strings to actual NA values
+# We apply this only to character columns to avoid type errors with numeric data
+cleaned_data <- cleaned_data %>% 
+  mutate(across(where(is.character), ~na_if(., "Unknown"))) %>%
+  mutate(across(where(is.character), ~na_if(., "NA"))) %>%
+  mutate(across(where(is.character), ~na_if(., "[Not Available]")))
+```
+
+### Identify and dropp columns with more than 60% missing data
+```{r}
+threshold <- 0.5
+# Calculate the proportion of NAs for each column
+columns_to_keep <- colMeans(is.na(cleaned_data)) < threshold
+
+# Subset the dataframe to keep only valid columns
+cleaned_data <- cleaned_data[, columns_to_keep]
+
+print(paste("Columns remaining:", ncol(cleaned_data)))
+```
+
+### Address NLP-Derived Fields
+```{r}
+# Clean specific NLP columns (removing "Yes"/"No" strings and handling conflicts)
+# This step creates a 'nlp_site_count' which acts as a proxy for metastatic load
+cleaned_data <- cleaned_data %>%
+  # 1. Standardize NLP Yes/No fields to Factors
+  mutate(across(ends_with("nlp"), ~case_when(
+    . == "Yes" ~ "Yes",
+    . == "No" ~ "No",
+    TRUE ~ NA_character_
+  ))) %>%
+  mutate(across(ends_with("nlp"), as.factor)) %>%
+
+  # 2. Create a feature counting how many sites were flagged by NLP
+  # Note: we use rowSums on conditions. We wrap it in a function to handle NAs safely.
+  mutate(nlp_site_count = rowSums(across(starts_with("tumor_site") & ends_with("nlp"), 
+                                         ~ . == "Yes"), na.rm = TRUE))
+```
+
+### Clean and validate primary features
+```{r}
+cleaned_features <- cleaned_data %>% 
+  # --- DEMOGRAPHICS  ---
+  mutate(current_age = as.numeric(current_age)) %>% 
+  filter(current_age > 0 & current_age < 110) %>% 
+  mutate(sex = as.factor(sex)) %>% 
+  mutate(race = as.factor(race)) %>% 
+
+  # --- CLINICAL PATHOLOGY  ---
+  mutate(cancer_type = as.factor(cancer_type)) %>% 
+  mutate(cancer_type_detailed = as.factor(cancer_type_detailed)) %>% 
+  mutate(primary_tumor_site = as.factor(primary_tumor_site)) %>% 
+  
+  # Simplify Stage
+  mutate(stage_simplified = case_when(
+    grepl("Stage 4|Metastatic|Distant", stage_highest_recorded) ~ "Advanced",
+    grepl("Stage 1-3|Localized|Regional", stage_highest_recorded) ~ "Early/Regional",
+    TRUE ~ NA_character_ 
+  )) %>% 
+  mutate(stage_simplified = as.factor(stage_simplified)) %>%
+
+  # --- GENOMIC & MOLECULAR  ---
+  # These are crucial for predicting response in sequencing data
+  mutate(fraction_genome_altered = as.numeric(fraction_genome_altered)) %>% 
+  mutate(mutation_count = as.numeric(mutation_count)) %>% 
+  mutate(tmb_nonsynonymous = as.numeric(tmb_nonsynonymous)) %>% 
+  mutate(tumor_purity = as.numeric(tumor_purity)) %>% 
+  mutate(msi_type = as.factor(msi_type)) %>% # Microsatellite instability impacts treatment
+
+  # --- NLP / HISTORY  ---
+  mutate(smoking_history_nlp = as.factor(smoking_history_nlp)) %>% 
+  
+  # --- TARGET VARIABLE ---
+  mutate(response = if_else(overall_survival_status == "0:LIVING", "Responded", "Non-Responded")) %>% 
+  mutate(response = as.factor(response))
+```
+
+### Final selection of clean features for your analysis
+```{r}
+final_analysis_df <- cleaned_features %>%
+  select(
+    # Demographics
+    current_age, sex, race,
+    # Clinical
+    cancer_type, cancer_type_detailed, primary_tumor_site, stage_simplified,
+    # Genomics (The "Data Programming" part of the module often looks for these numeric fields)
+    fraction_genome_altered, mutation_count, tmb_nonsynonymous, tumor_purity, msi_type,
+    # History
+    smoking_history_nlp,
+    # Target
+    response
+  ) %>%
+  drop_na()
+
+# Check the final dimensions (Should be roughly 14 columns + rows)
+dim(final_analysis_df)
+summary(final_analysis_df)
+```
+
