@@ -41,47 +41,47 @@ cleaned_data <- cleaned_data %>%
   mutate(across(where(is.character), ~na_if(., "[Not Available]")))
 ```
 
-### Identify and dropp columns with more than 60% missing data
+### Identify and dropp columns with more than 50% missing data
 ```{r}
-threshold <- 0.5
+#threshold <- 0.5
 # Calculate the proportion of NAs for each column
-columns_to_keep <- colMeans(is.na(cleaned_data)) < threshold
+#columns_to_keep <- colMeans(is.na(cleaned_data)) < threshold
 
 # Subset the dataframe to keep only valid columns
-cleaned_data <- cleaned_data[, columns_to_keep]
+#cleaned_data <- cleaned_data[, columns_to_keep]
 
-print(paste("Columns remaining:", ncol(cleaned_data)))
+#print(paste("Columns remaining:", ncol(cleaned_data)))
 ```
 
 ### Address NLP-Derived Fields
 ```{r}
 # Clean specific NLP columns (removing "Yes"/"No" strings and handling conflicts)
 # This step creates a 'nlp_site_count' which acts as a proxy for metastatic load
-cleaned_data <- cleaned_data %>%
+#cleaned_data <- cleaned_data %>%
   # 1. Standardize NLP Yes/No fields to Factors
-  mutate(across(ends_with("nlp"), ~case_when(
-    . == "Yes" ~ "Yes",
-    . == "No" ~ "No",
-    TRUE ~ NA_character_
-  ))) %>%
-  mutate(across(ends_with("nlp"), as.factor)) %>%
+ # mutate(across(ends_with("nlp"), ~case_when(
+  #  . == "Yes" ~ "Yes",
+   # . == "No" ~ "No",
+    #TRUE ~ NA_character_
+#  ))) %>%
+ # mutate(across(ends_with("nlp"), as.factor)) %>%
 
   # 2. Create a feature counting how many sites were flagged by NLP
   # Note: we use rowSums on conditions. We wrap it in a function to handle NAs safely.
-  mutate(nlp_site_count = rowSums(across(starts_with("tumor_site") & ends_with("nlp"), 
-                                         ~ . == "Yes"), na.rm = TRUE))
+  #mutate(nlp_site_count = rowSums(across(starts_with("tumor_site") & ends_with("nlp"), 
+                                  #       ~ . == "Yes"), na.rm = TRUE))
 ```
 
 ### Clean and validate primary features
 ```{r}
 cleaned_features <- cleaned_data %>% 
-  # --- DEMOGRAPHICS  ---
+  # --- DEMOGRAPHICS (3 Columns) ---
   mutate(current_age = as.numeric(current_age)) %>% 
   filter(current_age > 0 & current_age < 110) %>% 
   mutate(sex = as.factor(sex)) %>% 
   mutate(race = as.factor(race)) %>% 
 
-  # --- CLINICAL PATHOLOGY  ---
+  # --- CLINICAL PATHOLOGY (4 Columns) ---
   mutate(cancer_type = as.factor(cancer_type)) %>% 
   mutate(cancer_type_detailed = as.factor(cancer_type_detailed)) %>% 
   mutate(primary_tumor_site = as.factor(primary_tumor_site)) %>% 
@@ -94,7 +94,7 @@ cleaned_features <- cleaned_data %>%
   )) %>% 
   mutate(stage_simplified = as.factor(stage_simplified)) %>%
 
-  # --- GENOMIC & MOLECULAR  ---
+  # --- GENOMIC & MOLECULAR (5 Columns) ---
   # These are crucial for predicting response in sequencing data
   mutate(fraction_genome_altered = as.numeric(fraction_genome_altered)) %>% 
   mutate(mutation_count = as.numeric(mutation_count)) %>% 
@@ -102,7 +102,7 @@ cleaned_features <- cleaned_data %>%
   mutate(tumor_purity = as.numeric(tumor_purity)) %>% 
   mutate(msi_type = as.factor(msi_type)) %>% # Microsatellite instability impacts treatment
 
-  # --- NLP / HISTORY  ---
+  # --- NLP / HISTORY (2 Columns) ---
   mutate(smoking_history_nlp = as.factor(smoking_history_nlp)) %>% 
   
   # --- TARGET VARIABLE ---
