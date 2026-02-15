@@ -142,111 +142,95 @@ View(final_analysis_df)
 
 
 #EDA 
-
-#Bivariate Analysis
+# --- Univariate Analysis ---
+# 1. Age Distribution
 ```{r}
-ggplot(final_analysis_df, aes(x = current_age)) +
-  geom_histogram(bins = 30) +
-  labs(
-    title = "Distribution of Patient Age",
-    x = "Age (Years)",
-    y = "Count"
-    )
-
+p1 <- ggplot(final_analysis_df, aes(x = current_age)) +
+  geom_histogram(bins = 30, fill = "grey30", color = "white") +
+  labs(title = "Distribution of Patient Age", x = "Age (Years)", y = "Count") 
+ggsave("age_dist.png", p1, width = 6, height = 4)
+p1
 ```
 
+# 2. Gender Distribution
 ```{r}
-ggplot(final_analysis_df, aes(x = sex,fill=sex)) +
+p2 <- ggplot(final_analysis_df, aes(x = sex, fill = sex)) +
   geom_bar() +
-  labs(
-    title = "Gender Distribution",
-    x = "Gender",
-    y = "Count",
-    fill="sex"
-  )+
-  scale_fill_brewer(palette="Set2")+
-  theme_minimal()
+  labs(title = "Gender Distribution", x = "Gender", y = "Count", fill = "sex") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() 
+ggsave("gender_dist.png", p2, width = 6, height = 4)
+p2
 ```
 
+# 3. Responded Count
 ```{r}
-ggplot(data=final_analysis_df,
-       aes(x=cancer_type,y=current_age,fill=cancer_type))+
-geom_boxplot()+
-  labs(title="cancertpe vs current age",x="Cancer_type",y="current_age")
+p3 <- ggplot(final_analysis_df, aes(x = response, fill = response)) +
+  geom_bar() +
+  labs(title = "Responded Count", x = "Response", y = "Count", fill = "response") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() 
+ggsave("responded_count.png", p3, width = 6, height = 4)
+p3
 ```
 
+# --- Bivariate Analysis ---
+# 4. Cancer Type vs Age
 ```{r}
-ggplot(final_analysis_df, aes(x = fct_infreq(cancer_type),fill=sex)) +
-  geom_bar(position="fill") +
+p4 <- ggplot(data = final_analysis_df, aes(x = cancer_type, y = current_age, fill = cancer_type)) +
+  geom_boxplot() +
+  labs(title = "Cancer Type vs Current Age", x = "Cancer Type", y = "Current Age") 
+ggsave("cancer_age_boxplot.png", p4, width = 8, height = 5)
+p4
+```
+
+# 5. Cancer Types with Gender
+```{r}
+p5 <- ggplot(final_analysis_df, aes(x = fct_infreq(cancer_type), fill = sex)) +
+  geom_bar(position = "fill") +
   coord_flip() +
-  labs(
-    title = "Distribution of Cancer Types with gender",
-    x = "sex",
-    y = "Count",
-    fill="sex"
-  )+
-  scale_fill_brewer(palette = "Set2")+ #add some nice colors
-  theme_minimal()
-
-
+  labs(title = "Distribution of Cancer Types with Gender", x = "Cancer Type", y = "Proportion", fill = "sex") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() 
+ggsave("cancer_gender_dist.png", p5, width = 8, height = 5)
+p5
 ```
 
+# 6. Response by Simplified Stage
 ```{r}
-ggplot(final_analysis_df, aes(x = response, fill=response)) +
-  geom_bar() +
-  labs(
-    title = "Responded count",
-    x = "Response",
-    y = "Count",
-    fill="response"
-  )+
-  scale_fill_brewer(palette="Set2")+
-  theme_minimal()
-```
-
-```{r}
-ggplot(final_analysis_df, aes(x =response, fill=stage_simplified)) +
+p6 <- ggplot(final_analysis_df, aes(x = response, fill = stage_simplified)) +
   geom_bar(position = "fill") +
-  labs(title = "Treatment Response by simplified_stage", y = "stage_simplified")
+  labs(title = "Treatment Response by Simplified Stage", x = "Response", y = "Proportion Stage") 
+ggsave("response_stage.png", p6, width = 6, height = 4)
+p6
 ```
 
+# 7. Response by MSI Type
 ```{r}
-
-ggplot(final_analysis_df,
-       aes(x = msi_type,
-           fill = cancer_type)) +
+p7 <- ggplot(final_analysis_df, aes(x = msi_type, fill = cancer_type)) +
   geom_bar(position = "fill") +
-  labs(
-    title = "Treatment Response by Tumor Stage",
-    x = "msi_type",
-    y = "cancer_type"
-  )
+  labs(title = "Tumor Type Distribution by MSI Type", x = "MSI Type", y = "Proportion Cancer Type")
+ggsave("msi_cancer_dist.png", p7, width = 7, height = 5)
+p7
 ```
 
-#Univariate Analysis
+# --- Multivariate Analysis ---
+# 8. Age Distribution by Treatment Response
 ```{r}
-ggplot(final_analysis_df,
-       aes(x=response,
-           y = current_age)) +
+p8 <- ggplot(final_analysis_df, aes(x = response, y = current_age, fill = response)) +
   geom_boxplot() +
-  labs(
-    title = "Age Distribution by Treatment Response",
-    x = "treatment_outcome",
-    y = "Age"
-  )
+  labs(title = "Age Distribution by Treatment Response", x = "Treatment Outcome", y = "Age") 
+ggsave("age_response.png", p8, width = 6, height = 4)
+p8
 ```
 
+# 9. Age vs Tumor Stage by Response
 ```{r}
-ggplot(final_analysis_df,
-       aes(x = stage_simplified ,
-           y = current_age,
-           fill = stage_simplified )) +
+p9 <- ggplot(final_analysis_df, aes(x = stage_simplified, y = current_age, fill = stage_simplified)) +
   geom_boxplot() +
-  labs(
-    title = "Age vs Tumor Stage by Treatment Response",
-    x = "stage_simplified",
-    y = "Age (Years)"
-  )
+  labs(title = "Age vs Tumor Stage", x = "Simplified Stage", y = "Age (Years)") 
+ggsave("age_stage_boxplot.png", p9, width = 6, height = 4)
+p9
 ```
 
 #check missing values
